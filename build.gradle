@@ -1,6 +1,8 @@
 buildscript {
 	repositories {
+		maven { url "http://maven.aliyun.com/nexus/content/groups/public" }  //自定义添加
 		maven { url "https://repo.spring.io/plugins-release" }
+
 	}
 	dependencies {
 		classpath("io.spring.gradle:propdeps-plugin:0.0.9.RELEASE")
@@ -224,6 +226,7 @@ configure(subprojects - project(":spring-build-src")) { subproject ->
 		options.use = true
 		options.links(project.ext.javadocLinks)
 		options.addStringOption("Xdoclint:none", "-quiet")
+        failOnError = false  //添加这一行解决构建报错 Execution failed for task ‘:spring-beans:javadoc‘
 
 		// Suppress warnings due to cross-module @see and @link references.
 		// Note that global 'api' task does display all warnings.

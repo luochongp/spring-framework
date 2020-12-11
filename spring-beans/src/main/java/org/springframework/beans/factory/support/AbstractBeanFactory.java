@@ -239,7 +239,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	protected <T> T doGetBean(
 			String name, @Nullable Class<T> requiredType, @Nullable Object[] args, boolean typeCheckOnly)
 			throws BeansException {
-        //提取对应的 beanName
+        //提取对应的 beanName，这里传入的name可能是别名，也可能是FactoryBean，所以需要进行一系列的解析，这些解析内容包括如下下内容：
+		//1、去除FactoryBean的修饰符，也就是如果name="&aa"，那么首先会去除&而使name="aa"
+		//2、取指定alias所表示的最终 beanName，例如别名A指向名称为B的bean则返回B
 		String beanName = transformedBeanName(name);
 		Object bean;
 
@@ -306,12 +308,16 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				// Guarantee initialization of beans that the current bean depends on.
 				// 保证初始化当前 bean 所依赖的 bean
 				String[] dependsOn = mbd.getDependsOn();
+				// 如果存在依赖则需要递归实例化依赖的 bean
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
+						//确定指定的依赖bean是否已注册为依赖于给定的bean或其任何可传递的依赖项
+						// 如果dep已注册为beanName的依赖bean则抛出异常
 						if (isDependent(beanName, dep)) {
 							throw new BeanCreationException(mbd.getResourceDescription(), beanName,
 									"Circular depends-on relationship between '" + beanName + "' and '" + dep + "'");
 						}
+						//缓存依赖调用
 						registerDependentBean(dep, beanName);
 						try {
 							getBean(dep);
@@ -324,7 +330,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 
 				// Create bean instance.
+				// 实例化依赖的 bean 后便可以实例化mbd本身了
 				if (mbd.isSingleton()) {
+					// singleton 模式的创建
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
 							return createBean(beanName, mbd, args);
@@ -389,6 +397,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		}
 
 		// Check if required type matches the type of the actual bean instance.
+		// 检查需要的类型是否符合 bean 的实际类型
 		if (requiredType != null && !requiredType.isInstance(bean)) {
 			try {
 				T convertedBean = getTypeConverter().convertIfNecessary(bean, requiredType);
